@@ -3,10 +3,11 @@ from torchvision.datasets import ImageFolder
 import torchvision.transforms as T
 import torch
 from torch.utils.data import DataLoader
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 import models
 from models import CustomNet
 import torch.nn as nn
+import wandb
 
 # TRAIN LOOP
 def train(epoch, model, train_loader, criterion, optimizer):
@@ -52,6 +53,13 @@ def train(epoch, model, train_loader, criterion, optimizer):
     train_accuracy = 100. * correct / total
     print(f'Train Epoch: {epoch} Loss: {train_loss:.6f} Acc: {train_accuracy:.2f}%')
 
+    # Log metrics to W&B
+    wandb.log({
+        "epoch": epoch,
+        "train_loss": train_loss,
+        "train_accuracy": train_accuracy
+    })
+
 # VALIDATION LOOP
 def validate(model, val_loader, criterion):
     model.eval()
@@ -75,6 +83,13 @@ def validate(model, val_loader, criterion):
     val_accuracy = 100. * correct / total
 
     print(f'Validation Loss: {val_loss:.6f} Acc: {val_accuracy:.2f}%')
+
+    # Log metrics to W&B
+    wandb.log({
+        "val_loss": val_loss,
+        "val_accuracy": val_accuracy
+    })
+    
     return val_accuracy
 
 def main():
@@ -101,6 +116,15 @@ def main():
   criterion = nn.CrossEntropyLoss()
   optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
 
+  wandb.login()
+  run = wandb.init(
+      project="my-awesome-project",
+      config={
+          "learning_rate": 0.001,
+          "epochs": 10,
+      },
+  )
+
   best_acc = 0
 
   # Run the training process for {num_epochs} epochs
@@ -118,6 +142,10 @@ def main():
 
 
   print(f'Best validation accuracy: {best_acc:.2f}%')
+
+  torch.save(model.state_dict(), "best_model.pth")
+  wandb.save("best_model.pth")  # Save model to W&B
+  wandb.finish()
 
 if __name__ == "__main__":
   main()
